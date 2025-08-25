@@ -1,6 +1,10 @@
 (cl:defpackage #:trinsic
   (:use #:cl)
-  (:export #:client-form
-           #:define-interface-forms
+  (:export #:*standard-readtable*
+           #:call-with-state-value
+           #:client-form
            #:features-list
-           #:intrinsicp))
+           #:intrinsicp
+           #:make-define-interface
+           #:state-value
+           #:valid-state-value-p))
