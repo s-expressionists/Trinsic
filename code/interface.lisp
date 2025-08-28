@@ -17,30 +17,63 @@ expansion."))
     (declare (ignore client))
     nil))
 
-(defgeneric valid-state-value-p (client aspect value))
+(defgeneric valid-cell-value-p (client name type value))
 
-(defgeneric state-value (client aspect))
+(defgeneric initial-cell-value (client name type))
 
-(defgeneric (setf state-value) (new-value client aspect))
+(defgeneric cell-value (client name type))
 
-(defgeneric call-with-state-value (client thunk aspect value))
+(defgeneric (setf cell-value) (new-value client name type))
 
-(defmacro make-define-interface ((client-form client-class intrinsicp) declarations &body body)
+(defgeneric call-with-cell-value (client name type value thunk))
+
+(defmacro make-define-interface
+    ((&key (client-form nil client-form-p) (client-class nil client-class-p)
+           ((:intrinsic intrinsicp) nil intrinsicp-p))
+     declarations
+     &body body)
   `(defmacro ,(intern (symbol-name '#:define-interface))
-       (client-form client-class &optional intrinsicp)
-     (let ((body-forms (let ((,client-form client-form)
-                             (,client-class client-class)
-                             (,intrinsicp intrinsicp)
+       (&key client-form client-class ((:intrinsic intrinsicp) nil))
+     (let ((body-forms (let (,@(when client-form-p
+                                 `((,client-form client-form)))
+                             ,@(when client-class-p
+                                 `((,client-class client-class)))
+                             ,@(when intrinsicp-p
+                                 `((,intrinsicp intrinsicp)))
                              ,@(mapcar (lambda (decl)
-                                         (let ((var (first decl))
-                                               (sym (second decl)))
+                                         (destructuring-bind (var sym &key variable)
+                                             decl
+                                           (declare (ignore variable))
                                            (if (symbol-package sym)
                                                `(,var (if intrinsicp
                                                           ',sym
                                                           (intern ,(string sym))))
                                                `(,var (intern ,(string sym))))))
                                        declarations))
-                         ,@body))
+                         (nconc (locally ,@body)
+                                ,@(mapcar (lambda (decl)
+                                            (destructuring-bind (var sym &key variable)
+                                                decl
+                                              (when variable
+                                                ``((defmethod cell-value
+                                                       ((client ,client-class)
+                                                        (name (eql ',',sym))
+                                                        (type (eql 'cl:variable)))
+                                                     ,,var)
+
+                                                   (defmethod (setf cell-value)
+                                                       (new-value (client ,client-class)
+                                                        (name (eql ',',sym))
+                                                        (type (eql 'cl:variable)))
+                                                     (setf ,,var new-value))
+
+                                                   (defmethod call-with-cell-value
+                                                       ((client ,client-class)
+                                                        (name (eql ',',sym))
+                                                        (type (eql 'cl:variable)) thunk value)
+                                                     (let ((,,var value))
+                                                       (funcall thunk)))))))
+                                          declarations))))
            (feature-forms (when intrinsicp
                             `((setf *features* (nunion (features-list ,client-form)
                                                        *features*)))))
@@ -52,3 +85,40 @@ expansion."))
           ,.other-forms
           ,.feature-forms
           ,.body-forms))))
+
+(defmacro make-define-interface2
+    ((&key (client-form nil client-form-p) (client-class nil client-class-p)
+           ((:intrinsic intrinsicp) nil intrinsicp-p))
+     &body body)
+  `(defmacro ,(intern (symbol-name '#:define-interface))
+       (&key client-form client-class ((:intrinsic intrinsicp) nil))
+     (let ((body-forms (macrolet ((defun* (name &rest rest)
+                                    (let ((actual-name ,(if intrinsicp
+                                                            '(if (symbol-package name)
+                                                              name
+                                                              (intern (string name)))
+                                                            '(intern (string name)))))
+                                      `(defun ,actual-name ,@rest)))
+                                  (defmacro* (name &body rest)
+                                    (let ((actual-name ,(if intrinsicp
+                                                            '(if (symbol-package name)
+                                                              name
+                                                              (intern (string name)))
+                                                            '(intern (string name)))))
+                                      `(defmacro ,actual-name ,@rest))))
+                         (let (,@(when client-form-p
+                                   `((,client-form client-form)))
+                               ,@(when client-class-p
+                                   `((,client-class client-class)))
+                               ,@(when intrinsicp-p
+                                   `((,intrinsicp intrinsicp))))
+                           ,@body))))
+       `(progn
+          (defmethod client-form ((client ,client-class))
+            ,client-form)
+          (defmethod intrinsicp ((client ,client-class))
+            ,intrinsicp)
+          ,.body-forms
+          ,.(when intrinsicp
+              `((setf *features* (nunion (features-list ,client-form)
+                                         *features*))))))))
