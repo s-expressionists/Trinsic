@@ -6,6 +6,7 @@
   :version (:read-file-form "version.sexp")
   :homepage "https://github.com/s-expressionists/Trinsic"
   :bug-tracker "https://github.com/s-expressionists/Trinsic/issues"
+  :depends-on ("trivial-package-locks")
   :components ((:module "code"
                 :serial t
                 :components ((:file "packages")

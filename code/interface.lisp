@@ -80,8 +80,11 @@ expansion."))
            (other-forms `((defmethod client-form ((client ,client-class))
                             ,client-form)
                           (defmethod intrinsicp ((client ,client-class))
-                            ,intrinsicp))))
-       `(progn
+                            ,intrinsicp)))
+           (progn-sym (if intrinsicp
+                          'trivial-package-locks:with-unlocked-system-packages
+                          'progn)))
+       `(,progn-sym
           ,.other-forms
           ,.feature-forms
           ,.body-forms))))
