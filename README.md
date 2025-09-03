@@ -19,7 +19,7 @@ that the expanded code refers to correct client at execution time.
 (defgeneric features-list (client)
 ```
 
-Return a list of feature keywords to be merged with *FEATURES* for
+Return a list of feature keywords to be merged with \*FEATURES\* for
 intrinsic clients. This generic function has NCONC method combination.
 
 ## cell-value
@@ -29,8 +29,8 @@ intrinsic clients. This generic function has NCONC method combination.
 ```
 
 Returns the current value of a cell in the client. For example
-`(cell-value client 'cl:*standard-output* 'cl:variable)` could be used
-to retrieve the value of *STANDARD-OUTPUT*.
+`(cell-value client 'cl:\*standard-output\* 'cl:variable)` could be
+used to retrieve the value of \*STANDARD-OUTPUT\*.
 
 ## setf cell-value
 
@@ -92,14 +92,14 @@ follows:
 
 1. For intrinsic systems the initial value of VAR will be SYMBOL if
    SYMBOL is interned. If SYMBOL is uninterned the VAR will be set to
-   an interned symbol in *PACKAGE* with same SYMBOL-NAME as SYMBOL.
+   an interned symbol in \*PACKAGE\* with same SYMBOL-NAME as SYMBOL.
 2. For extrinsic systems the initial value of VAR will be an an
-   interned symbol in *PACKAGE* with same SYMBOL-NAME as SYMBOL.
+   interned symbol in \*PACKAGE\* with same SYMBOL-NAME as SYMBOL.
 3. If the keyword argument :VARIABLE is supplied and is non-NIL then
    methods for CELL-VALUE, (SETF CELL-VALUE), and CALL-WITH-CELL-VALUE
    will be defined for a TYPE of CL:VARIABLE.
 
 For intrinsic systems the DEFINE-INTERFACE macro created by
 MAKE-DEFINE-INTERFACE will also merge the features keywords from
-FEATURE-LIST into CL:*FEATURES* and disable package locks for the BODY
-via TRIVIAL-PACKAGE-LOCKS:WITH-UNLOCKED-SYSTEM-PACKAGES.
+FEATURE-LIST into CL:\*FEATURES\* and disable package locks for the
+BODY via TRIVIAL-PACKAGE-LOCKS:WITH-UNLOCKED-SYSTEM-PACKAGES.
