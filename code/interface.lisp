@@ -29,62 +29,68 @@ expansion."))
 
 (defmacro make-define-interface
     ((&key (client-form nil client-form-p) (client-class nil client-class-p)
-           ((:intrinsic intrinsicp) nil intrinsicp-p))
+        ((:intrinsic intrinsicp) nil intrinsicp-p))
      declarations
      &body body)
-  `(defmacro ,(intern (symbol-name '#:define-interface))
-       (&key client-form client-class ((:intrinsic intrinsicp) nil))
-     (let ((body-forms (let (,@(when client-form-p
-                                 `((,client-form client-form)))
-                             ,@(when client-class-p
-                                 `((,client-class client-class)))
-                             ,@(when intrinsicp-p
-                                 `((,intrinsicp intrinsicp)))
-                             ,@(mapcar (lambda (decl)
-                                         (destructuring-bind (var sym &key variable)
-                                             decl
-                                           (declare (ignore variable))
-                                           (if (symbol-package sym)
-                                               `(,var (if intrinsicp
-                                                          ',sym
-                                                          (intern ,(string sym))))
-                                               `(,var (intern ,(string sym))))))
-                                       declarations))
-                         (nconc (locally ,@body)
-                                ,@(mapcar (lambda (decl)
-                                            (destructuring-bind (var sym &key variable)
-                                                decl
-                                              (when variable
-                                                ``((defmethod cell-value
-                                                       ((client ,client-class)
-                                                        (name (eql ',',sym))
-                                                        (type (eql 'cl:variable)))
-                                                     ,,var)
+  (let ((pkgs (loop with pkgs
+                    for (nil sym) in declarations
+                    for pkg = (symbol-package sym)
+                    finally (return (mapcar #'package-name pkgs))
+                    when pkg
+                      do (pushnew pkg pkgs))))
+    `(defmacro ,(intern (symbol-name '#:define-interface))
+         (&key client-form client-class ((:intrinsic intrinsicp) nil))
+       (let ((body-forms (let (,@(when client-form-p
+                                   `((,client-form client-form)))
+                               ,@(when client-class-p
+                                   `((,client-class client-class)))
+                               ,@(when intrinsicp-p
+                                   `((,intrinsicp intrinsicp)))
+                               ,@(mapcar (lambda (decl)
+                                           (destructuring-bind (var sym &key variable)
+                                               decl
+                                             (declare (ignore variable))
+                                             (if (symbol-package sym)
+                                                 `(,var (if intrinsicp
+                                                            ',sym
+                                                            (intern ,(string sym))))
+                                                 `(,var (intern ,(string sym))))))
+                                         declarations))
+                           (nconc (locally ,@body)
+                                  ,@(mapcar (lambda (decl)
+                                              (destructuring-bind (var sym &key variable)
+                                                  decl
+                                                (when variable
+                                                  ``((defmethod cell-value
+                                                         ((client ,client-class)
+                                                          (name (eql ',',sym))
+                                                          (type (eql 'cl:variable)))
+                                                       ,,var)
 
-                                                   (defmethod (setf cell-value)
-                                                       (new-value (client ,client-class)
-                                                        (name (eql ',',sym))
-                                                        (type (eql 'cl:variable)))
-                                                     (setf ,,var new-value))
+                                                     (defmethod (setf cell-value)
+                                                         (new-value (client ,client-class)
+                                                          (name (eql ',',sym))
+                                                          (type (eql 'cl:variable)))
+                                                       (setf ,,var new-value))
 
-                                                   (defmethod call-with-cell-value
-                                                       ((client ,client-class)
-                                                        (name (eql ',',sym))
-                                                        (type (eql 'cl:variable)) thunk value)
-                                                     (let ((,,var value))
-                                                       (funcall thunk)))))))
-                                          declarations))))
-           (feature-forms (when intrinsicp
-                            `((setf *features* (nunion (features-list ,client-form)
-                                                       *features*)))))
-           (other-forms `((defmethod client-form ((client ,client-class))
-                            ,client-form)
-                          (defmethod intrinsicp ((client ,client-class))
-                            ,intrinsicp)))
-           (progn-sym (if intrinsicp
-                          'trivial-package-locks:with-unlocked-system-packages
-                          'progn)))
-       `(,progn-sym
-          ,.other-forms
-          ,.feature-forms
-          ,.body-forms))))
+                                                     (defmethod call-with-cell-value
+                                                         ((client ,client-class)
+                                                          (name (eql ',',sym))
+                                                          (type (eql 'cl:variable)) thunk value)
+                                                       (let ((,,var value))
+                                                         (funcall thunk)))))))
+                                            declarations))))
+             (feature-forms (when intrinsicp
+                              `((setf *features* (nunion (features-list ,client-form)
+                                                         *features*)))))
+             (other-forms `((defmethod client-form ((client ,client-class))
+                              ,client-form)
+                            (defmethod intrinsicp ((client ,client-class))
+                              ,intrinsicp)))
+             (form-head (if intrinsicp
+                            '(trivial-package-locks:with-unlocked-packages ,pkgs)
+                            '(progn))))
+         `(,.form-head
+           ,.other-forms
+           ,.feature-forms
+           ,.body-forms)))))
