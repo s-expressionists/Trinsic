@@ -90,7 +90,7 @@ expansion."))
              (form-head (if intrinsicp
                             '(trivial-package-locks:with-unlocked-packages ,pkgs)
                             '(progn))))
-         `(,.form-head
+         `(,@form-head
            ,.other-forms
            ,.feature-forms
            ,.body-forms)))))
