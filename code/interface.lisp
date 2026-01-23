@@ -84,7 +84,7 @@ expansion."))
                               `((setf *features* (nunion (features-list ,client-form)
                                                          *features*)))))
              (other-forms `((defmethod client-form ((client ,client-class))
-                              ,client-form)
+                              ',client-form)
                             (defmethod intrinsicp ((client ,client-class))
                               ,intrinsicp)))
              (form-head (if intrinsicp
